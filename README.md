@@ -31,3 +31,18 @@ The included test suite covers the pre-existing document parsing, normalization,
 ## Scanned PDF OCR
 
 FoundRisk first reads a PDF text layer. If a page has little/no selectable text, it attempts local Tesseract OCR. Install the Tesseract OCR engine and its English language data on the same computer that runs the Flask app. On Windows, install Tesseract OCR and either add `tesseract.exe` to PATH or set `TESSERACT_CMD` to its full path. Optional environment settings: `FOUNDRISK_OCR_LANG` (default `eng`) and `FOUNDRISK_OCR_SCALE` (default `2`). OCR output is an extraction aid and still requires source review.
+
+## 🛠️ Tech Stack
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" />
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white" />
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" />
+  <img src="https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white" />
+  <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" />
+  <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
+</p>
