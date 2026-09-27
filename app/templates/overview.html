@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Overview — FoundRisk Edge{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow"><span class="eyebrow-dot"></span> PHASE 01 · DOCUMENT INTELLIGENCE</div>
+        <h1>Startup evidence,<br><em>without the guesswork.</em></h1>
+        <p>Build a traceable evidence base from financials, pitch materials and business documents — locally, with every extracted metric tied back to its source.</p>
+        <div class="hero-trust-row" aria-label="Feature 1 capabilities">
+            <span><i></i> Source-linked evidence</span>
+            <span><i></i> 3 metric families</span>
+            <span><i></i> Local document workflow</span>
+        </div>
+    </div>
+    <div class="hero-actions">
+        <a href="{{ url_for('pages.documents_page') }}" class="btn btn-primary btn-large"><span class="plus">+</span> Add document</a>
+        <a href="{{ url_for('pages.evidence_page') }}" class="text-action">Explore evidence <span>→</span></a>
+    </div>
+</section>
+
+<section class="metric-grid overview-kpi-grid" id="header-stats" aria-label="Project metrics">
+    <article class="metric-card kpi-card kpi-documents">
+        <div class="kpi-topline">
+            <div class="metric-icon kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.75h7l4 4V20a.75.75 0 0 1-.75.75h-10.5A.75.75 0 0 1 6 20V4.5a.75.75 0 0 1 .75-.75Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 4v4h4M9 12h6M9 15.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <span class="kpi-category">SOURCES</span>
+        </div>
+        <div class="metric-label">Documents</div>
+        <div class="metric-value" id="stat-documents">—</div>
+        <div class="kpi-bottom">
+            <span class="kpi-status-dot"></span>
+            <span id="stat-doc-status">Waiting for source files</span>
+        </div>
+        <span class="kpi-orbit" aria-hidden="true"></span>
+    </article>
+
+    <article class="metric-card kpi-card kpi-claims">
+        <div class="kpi-topline">
+            <div class="metric-icon kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 5.75A1.75 1.75 0 0 1 6.75 4h10.5A1.75 1.75 0 0 1 19 5.75v12.5A1.75 1.75 0 0 1 17.25 20H6.75A1.75 1.75 0 0 1 5 18.25V5.75Z" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <span class="kpi-category">EXTRACTION</span>
+        </div>
+        <div class="metric-label">Claims extracted</div>
+        <div class="metric-value" id="stat-claims">—</div>
+        <div class="kpi-bottom"><span class="kpi-mini-mark">↳</span><span>Traceable source statements</span></div>
+        <span class="kpi-orbit" aria-hidden="true"></span>
+    </article>
+
+    <article class="metric-card kpi-card kpi-metrics">
+        <div class="kpi-topline">
+            <div class="metric-icon kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 19.25h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="5.5" y="11" width="3.2" height="6.25" rx="1" fill="currentColor" opacity=".72"/><rect x="10.4" y="7.5" width="3.2" height="9.75" rx="1" fill="currentColor" opacity=".86"/><rect x="15.3" y="4.5" width="3.2" height="12.75" rx="1" fill="currentColor"/></svg>
+            </div>
+            <span class="kpi-category">STRUCTURED DATA</span>
+        </div>
+        <div class="metric-label">Metrics identified</div>
+        <div class="metric-value" id="stat-metrics">—</div>
+        <div class="kpi-bottom"><span class="kpi-mini-mark">3</span><span>Revenue · Customers · Market</span></div>
+        <span class="kpi-orbit" aria-hidden="true"></span>
+    </article>
+
+    <article class="metric-card kpi-card kpi-evidence">
+        <div class="kpi-topline">
+            <div class="metric-icon kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 19 6v5.7c0 4.2-2.85 7.2-7 8.8-4.15-1.6-7-4.6-7-8.8V6l7-2.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.8 12 2.1 2.1 4.4-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span class="kpi-category">TRACEABILITY</span>
+        </div>
+        <div class="metric-label">Evidence records</div>
+        <div class="metric-value" id="stat-evidence">—</div>
+        <div class="kpi-bottom"><span class="kpi-mini-mark">✓</span><span id="stat-status">Local processing</span></div>
+        <span class="kpi-orbit" aria-hidden="true"></span>
+    </article>
+</section>
+
+<section class="section-grid pipeline-grid">
+    <article class="panel pipeline-panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">TRACEABILITY</div>
+                <h2>Evidence pipeline</h2>
+            </div>
+            <span class="live-tag"><span></span> LIVE DATA</span>
+        </div>
+        <p class="panel-copy">Every document moves through the same transparent chain.</p>
+        <div class="pipeline">
+            <div class="pipeline-node active"><div class="pipeline-number" id="pipe-documents">0</div><div><strong>Documents</strong><span>Source files</span></div></div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-node active"><div class="pipeline-number" id="pipe-claims">0</div><div><strong>Claims</strong><span>Statements found</span></div></div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-node active"><div class="pipeline-number" id="pipe-metrics">0</div><div><strong>Metrics</strong><span>Normalized facts</span></div></div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-node active"><div class="pipeline-number" id="pipe-evidence">0</div><div><strong>Evidence</strong><span>Traceable records</span></div></div>
+        </div>
+    </article>
+
+    <article class="panel privacy-hero">
+        <div class="privacy-visual"><span></span><span></span><span></span><i></i></div>
+        <div class="eyebrow">PRIVATE BY DESIGN</div>
+        <h2>Your source files stay local.</h2>
+        <p>Phase 1 uses deterministic extraction. No external generative AI API is required to turn documents into evidence.</p>
+        <div class="privacy-line"><span class="check">✓</span> Local document processing</div>
+        <div class="privacy-line"><span class="check">✓</span> No silent currency conversion</div>
+    </article>
+</section>
+
+<section class="section-grid two-thirds">
+    <article class="panel live-intelligence-panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">LIVE SOURCE SNAPSHOT</div>
+                <h2>What your files actually support</h2>
+            </div>
+            <a href="{{ url_for('pages.analysis_page') }}" class="panel-link">Open analysis →</a>
+        </div>
+        <p class="panel-copy">These values are read from the documents in the active project. Nothing is pre-filled.</p>
+        <div class="live-metric-grid" id="live-metric-grid">
+            <div class="live-metric-empty">Upload a real source file to populate this view.</div>
+        </div>
+        <div class="coverage-stack" id="snapshot-body" style="margin-top:14px">
+            <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">EXTRACTION QUALITY</div>
+                <h2>Rule-based confidence</h2>
+            </div>
+        </div>
+        <div class="quality-summary" id="quality-body">
+            <div class="quality-row"><span>High</span><strong>—</strong></div>
+            <div class="quality-row"><span>Medium</span><strong>—</strong></div>
+            <div class="quality-row"><span>Low</span><strong>—</strong></div>
+        </div>
+        <div class="quality-note">Confidence is calculated from explicit extraction signals — not an AI-generated score.</div>
+    </article>
+</section>
+
+<section class="section-grid two-thirds">
+    <article class="panel">
+        <div class="panel-head">
+            <div>
+                <div class="eyebrow">RECENT SOURCES</div>
+                <h2>Document activity</h2>
+            </div>
+            <a href="{{ url_for('pages.documents_page') }}" class="panel-link">View all →</a>
+        </div>
+        <div id="recent-documents" class="activity-list"></div>
+    </article>
+
+    <article class="panel roadmap-panel">
+        <div class="eyebrow">PRODUCT PATH</div>
+        <h2>From evidence to decision.</h2>
+        <div class="roadmap">
+            <div class="roadmap-item current"><span>01</span><div><strong>Document Intelligence</strong><small>Active now</small></div></div>
+            <div class="roadmap-item"><span>02</span><div><strong>Risk & Contradiction Engine</strong><small>Next phase</small></div></div>
+            <div class="roadmap-item"><span>03</span><div><strong>Evidence Explainability</strong><small>Planned</small></div></div>
+            <div class="roadmap-item"><span>04</span><div><strong>Evidence-Grounded Copilot</strong><small>Planned</small></div></div>
+            <div class="roadmap-item"><span>05</span><div><strong>Snapdragon Edge AI Lab</strong><small>Planned</small></div></div>
+        </div>
+    </article>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function statusBadge(status) {
+    const labels = { ready: "Processed", uploaded: "Uploaded", parsing: "Parsing", extracting: "Extracting", normalizing: "Normalizing", indexing: "Indexing", empty: "No extractable text", failed: "Failed" };
+    return labels[status] || status;
+}
+function statusClass(status) {
+    return status === "ready" ? "status-ready" : (status === "failed" || status === "empty" ? "status-danger" : "status-progress");
+}
+async function loadOverview(projectId) {
+    try {
+        const [{ documents }, summary, evidenceData] = await Promise.all([
+            Api.listDocuments(projectId),
+            Api.analysisSummary(projectId).catch(() => null),
+            Api.listEvidence(projectId).catch(() => ({ evidence: [] }))
+        ]);
+        const totalClaims = documents.reduce((s,d) => s + (d.claims_found || 0), 0);
+        const totalMetrics = documents.reduce((s,d) => s + (d.metrics_found || 0), 0);
+        const totalEvidence = documents.reduce((s,d) => s + (d.evidence_count || 0), 0);
+        const ready = documents.filter(d => d.status === "ready").length;
+
+        document.getElementById("stat-documents").textContent = documents.length;
+        document.getElementById("stat-claims").textContent = totalClaims;
+        document.getElementById("stat-metrics").textContent = totalMetrics;
+        document.getElementById("stat-evidence").textContent = totalEvidence;
+        document.getElementById("stat-doc-status").textContent = documents.length ? `${ready} of ${documents.length} processed` : "Waiting for source files";
+        document.getElementById("stat-status").textContent = documents.length ? "Local pipeline" : "Ready to ingest";
+
+        document.getElementById("pipe-documents").textContent = documents.length;
+        document.getElementById("pipe-claims").textContent = totalClaims;
+        document.getElementById("pipe-metrics").textContent = totalMetrics;
+        document.getElementById("pipe-evidence").textContent = totalEvidence;
+
+        const snapshot = document.getElementById("snapshot-body");
+        const labels = { revenue: "Revenue", customer_count: "Customer Count", market_size: "Market Size" };
+        const icons = { revenue: "₹", customer_count: "#", market_size: "M" };
+        const liveGrid = document.getElementById("live-metric-grid");
+        if (summary && summary.metric_coverage) {
+            liveGrid.innerHTML = Object.entries(summary.metric_coverage).map(([type,c]) => {
+                const latest = c.latest;
+                if (!latest) return `<div class="live-metric-card is-empty"><span class="live-mark">${icons[type]}</span><div><small>${labels[type]}</small><strong>—</strong><em>No extracted observation yet</em></div></div>`;
+                const prefix = latest.currency === "INR" ? "₹" : latest.currency === "USD" ? "$" : "";
+                const value = Number(latest.value).toLocaleString("en-IN", {maximumFractionDigits:2});
+                return `<div class="live-metric-card"><span class="live-mark">${icons[type]}</span><div><small>${labels[type]}</small><strong>${prefix}${value}</strong><em>${AppUI.escapeHtml(latest.period || "Period not confirmed")} · ${AppUI.escapeHtml(latest.confidence_label || "")}</em></div></div>`;
+            }).join("");
+        }
+
+        if (!summary) {
+            snapshot.innerHTML = '<div class="empty-state compact">Upload a source document to build your evidence base.</div>';
+        } else {
+            snapshot.innerHTML = Object.entries(summary.metric_coverage).map(([type,c]) => {
+                const pct = c.observations ? Math.min(100, Math.max(14, c.high_confidence_observations / c.observations * 100)) : 0;
+                return `<div class="coverage-item">
+                    <div class="coverage-icon">${icons[type]}</div>
+                    <div class="coverage-main"><div class="coverage-title"><strong>${labels[type]}</strong><span>${c.observations} observation${c.observations === 1 ? "" : "s"}</span></div>
+                    <div class="coverage-track"><span style="width:${pct}%"></span></div>
+                    <div class="coverage-meta">${c.documents} source document${c.documents === 1 ? "" : "s"} · ${c.high_confidence_observations} high-confidence</div></div>
+                </div>`;
+            }).join("");
+        }
+
+        const counts = { High: 0, Medium: 0, Low: 0 };
+        (evidenceData.evidence || []).forEach(e => counts[e.confidence_label] = (counts[e.confidence_label] || 0) + 1);
+        document.getElementById("quality-body").innerHTML = ["High","Medium","Low"].map(label =>
+            `<div class="quality-row"><span><i class="quality-dot q-${label.toLowerCase()}"></i>${label}</span><strong>${counts[label]}</strong></div>`
+        ).join("");
+
+        const recent = document.getElementById("recent-documents");
+        if (!documents.length) {
+            recent.innerHTML = `<div class="empty-state">
+                <div class="empty-icon icon-doc"></div>
+                <strong>No documents yet</strong><span>Add a PDF, CSV or XLSX to start.</span>
+            </div>`;
+        } else {
+            recent.innerHTML = documents.slice(0,5).map(d => `
+                <div class="activity-row">
+                    <div class="file-icon">${d.file_type.toUpperCase()}</div>
+                    <div class="activity-main"><strong>${AppUI.escapeHtml(d.filename)}</strong><span>${d.claims_found || 0} claims · ${d.evidence_count || 0} evidence</span></div>
+                    <span class="status-pill ${statusClass(d.status)}">${statusBadge(d.status)}</span>
+                </div>`).join("");
+        }
+    } catch (e) {
+        AppUI.toast(e.message || "Could not load overview.", "error");
+    }
+}
+window.onProjectReady = loadOverview;
+window.onProjectChanged = loadOverview;
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Contradiction Engine — FoundRisk Edge{% endblock %}
+{% block page_title %}Contradiction Engine{% endblock %}
+{% block content %}
+<section class="page-intro cx-page-intro">
+  <div><div class="eyebrow">PHASE 2 · CROSS-SOURCE REVIEW</div><h1>Contradiction <span>Engine</span></h1><p>Compare matching metrics across source files, inspect the exact evidence behind each difference, and prioritize discrepancies for human review.</p></div>
+  <div class="cx-intro-actions"><span class="analysis-badge"><span class="privacy-mini-dot"></span> Local · deterministic</span><button class="btn btn-primary" id="refresh-contradictions" type="button">↻ Refresh comparison</button></div>
+</section>
+<section class="cx-kpi-grid" aria-label="Discrepancy summary">
+  <article class="cx-kpi-card cx-kpi-total"><div class="cx-kpi-top"><span>Flagged findings</span><span class="cx-kpi-icon">≠</span></div><strong id="cx-total">—</strong><small>Pairs requiring review</small></article>
+  <article class="cx-kpi-card cx-kpi-high"><div class="cx-kpi-top"><span>High severity</span><span class="cx-severity-dot"></span></div><strong id="cx-high">—</strong><small>Large differences</small></article>
+  <article class="cx-kpi-card cx-kpi-medium"><div class="cx-kpi-top"><span>Medium severity</span><span class="cx-severity-dot"></span></div><strong id="cx-medium">—</strong><small>Meaningful differences</small></article>
+  <article class="cx-kpi-card cx-kpi-low"><div class="cx-kpi-top"><span>Low severity</span><span class="cx-severity-dot"></span></div><strong id="cx-low">—</strong><small>Smaller differences</small></article>
+</section>
+<section class="cx-coverage-grid" id="comparison-coverage">
+  <article><span class="cx-coverage-icon">▤</span><div><small>Processed files</small><strong id="cx-files">—</strong></div></article>
+  <article><span class="cx-coverage-icon">◈</span><div><small>Metric observations</small><strong id="cx-observations">—</strong></div></article>
+  <article><span class="cx-coverage-icon">⌘</span><div><small>Comparable groups</small><strong id="cx-groups">—</strong></div></article>
+  <article><span class="cx-coverage-icon">⇄</span><div><small>Pairs checked</small><strong id="cx-pairs">—</strong></div></article>
+</section>
+<section class="panel cx-method-panel"><div class="cx-method-symbol">i</div><div><strong>How comparison works</strong><p id="contradiction-method">Only comparable observations are checked: same metric, normalized reporting period and currency. Currency conversion is not performed. A flag is a review signal—not a fraud verdict.</p></div></section>
+<section class="panel cx-source-panel">
+  <div class="panel-head"><div><div class="eyebrow">SOURCE VALUES IN SCOPE</div><h2>Observation ledger</h2><p class="panel-copy">Review the actual extracted values and their provenance before interpreting a discrepancy.</p></div><a class="panel-link" href="{{ url_for('pages.evidence_page') }}">Open Evidence →</a></div>
+  <div id="cx-observed-meta" class="observation-ledger-meta">Loading source observations…</div>
+  <div id="cx-observed-ledger" class="observation-ledger cx-observed-ledger"><div class="empty-state compact"><strong>Loading observations…</strong></div></div>
+</section>
+<section class="panel cx-findings-panel">
+  <div class="panel-head cx-findings-toolbar"><div><div class="eyebrow">REVIEW QUEUE</div><h2>Discrepancies to inspect</h2><p class="panel-copy">Each finding includes both source values, the measured difference, and its evidence trail.</p></div><div class="cx-filters"><label class="sr-only" for="contradiction-severity-filter">Filter by severity</label><select id="contradiction-severity-filter" class="doc-status-filter"><option value="">All severities</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select><input id="cx-search" type="search" placeholder="Search metric, source or period…" aria-label="Search findings"></div></div>
+  <div id="contradiction-list" class="contradiction-list"><div class="empty-state compact"><strong>Loading comparison results…</strong></div></div>
+  <div class="contradiction-footnote" id="contradiction-footnote"></div>
+</section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let cxProjectId=null, cxFindings=[], cxSummary={};
+const cxMetricLabels={revenue:"Revenue",customer_count:"Customer Count",market_size:"Market Size"};
+function formatContradictionValue(o){const prefix=o.currency==="INR"?"₹":o.currency==="USD"?"$":"";const value=Number(o.normalized_value);const normalized=Number.isFinite(value)?value.toLocaleString("en-IN",{maximumFractionDigits:2}):"—";const original=`${prefix}${AppUI.escapeHtml(o.original_value??"—")}${o.original_unit?` ${AppUI.escapeHtml(o.original_unit)}`:""}`;return `${original}<small>Normalized: ${prefix}${normalized}</small>`;}
+function renderObservationGroups(groups){
+ const host=document.getElementById("cx-observed-ledger"), meta=document.getElementById("cx-observed-meta");
+ const count=groups.reduce((n,g)=>n+(g.observation_count||0),0);meta.textContent=`${count} extracted observations · ${groups.length} metric/period groups`;
+ if(!groups.length){host.innerHTML='<div class="empty-state large"><strong>No source observations yet</strong><span>Upload and process at least one supported PDF, CSV or XLSX document to populate this ledger.</span><a href="/documents" class="btn btn-secondary btn-small">Go to Documents</a></div>';return;}
+ host.innerHTML=groups.map(g=>`<article class="observation-group"><div class="observation-group-head"><div><strong>${AppUI.escapeHtml(g.metric_label||cxMetricLabels[g.metric_type]||"Metric")}</strong><span>${AppUI.escapeHtml(g.period||"Period not confirmed")}</span></div><span class="observation-status os-${AppUI.escapeHtml(g.status||"")}">${g.status==="single_source"?"Single source":g.status==="discrepancy"?"Discrepancy flagged":g.status==="within_threshold"?"Within review threshold":g.status==="period_unconfirmed"?"Period unconfirmed":"Comparable"}</span></div><div class="observation-values">${(g.observations||[]).map(o=>`<div class="observation-value"><div class="observation-value-top"><strong>${formatContradictionValue(o)}</strong><span>${AppUI.escapeHtml(o.confidence_label||"Unrated")}</span></div><span class="observation-source-name">${AppUI.escapeHtml(o.document_name||"Source file")}</span><small>${AppUI.escapeHtml(o.source_location||"Source location unavailable")}</small><p>${AppUI.escapeHtml(o.evidence_text||"")}</p></div>`).join("")}</div></article>`).join("");
+}
+function renderContradictions(){
+ const severity=document.getElementById("contradiction-severity-filter").value, q=document.getElementById("cx-search").value.trim().toLowerCase();
+ const shown=cxFindings.filter(f=>(!severity||f.severity===severity)&&(!q||[f.metric_label,f.period,f.explanation,...(f.observations||[]).flatMap(o=>[o.document_name,o.evidence_text,o.source_location])].join(" ").toLowerCase().includes(q)));
+ const list=document.getElementById("contradiction-list");
+ if(!shown.length){let heading,detail;if(cxFindings.length){heading="No findings match these filters";detail="Try another severity or search term.";}else if(cxSummary.no_comparable_reason){heading=(cxSummary.ready_document_count||0)<2?"Add another source to compare":"No comparable cross-document pair found";detail=cxSummary.no_comparable_reason;}else{heading="No discrepancy exceeded the review threshold";detail="Comparable pairs were checked, but none crossed the review threshold. This does not certify that the documents are accurate.";}list.innerHTML=`<div class="contradiction-empty"><div class="cx-empty-mark">✓</div><strong>${AppUI.escapeHtml(heading)}</strong><span>${AppUI.escapeHtml(detail)}</span></div>`;return;}
+ list.innerHTML=shown.map(f=>{const a=f.observations[0],b=f.observations[1];return `<article class="contradiction-card"><div class="cx-card-top"><div><span class="cx-metric">${AppUI.escapeHtml(f.metric_label)}</span><span class="cx-period">${AppUI.escapeHtml(f.period)}</span></div><span class="badge cx-badge cx-${String(f.severity).toLowerCase()}">${AppUI.escapeHtml(f.severity)} discrepancy</span></div><div class="cx-difference"><strong>${Number(f.percent_difference).toLocaleString(undefined,{maximumFractionDigits:1})}%</strong><span>difference · ${AppUI.escapeHtml(f.currency||"non-currency metric")}</span></div><div class="cx-sources"><div class="cx-source"><div class="cx-source-label"><span>Source A</span><strong>${AppUI.escapeHtml(a.document_name||"Source file")}</strong></div><div class="cx-value">${formatContradictionValue(a)}</div><small>${AppUI.escapeHtml(a.source_location||"Source location unavailable")}</small><p>${AppUI.escapeHtml(a.evidence_text||"")}</p></div><div class="cx-compare-mark">≠</div><div class="cx-source"><div class="cx-source-label"><span>Source B</span><strong>${AppUI.escapeHtml(b.document_name||"Source file")}</strong></div><div class="cx-value">${formatContradictionValue(b)}</div><small>${AppUI.escapeHtml(b.source_location||"Source location unavailable")}</small><p>${AppUI.escapeHtml(b.evidence_text||"")}</p></div></div><div class="cx-explanation"><strong>Why this was flagged</strong><p>${AppUI.escapeHtml(f.explanation||"The comparable values differ beyond the configured review threshold.")}</p><div class="cx-math-grid"><div><small>Absolute gap</small><strong>${AppUI.escapeHtml(f.currency==="INR"?"₹":f.currency==="USD"?"$":"")}${Number(f.difference||0).toLocaleString("en-IN",{maximumFractionDigits:2})}</strong></div><div><small>Calculation basis</small><strong>Max(|A|, |B|)</strong></div><div><small>Review threshold</small><strong>${f.severity==="Low"?"5–15%":f.severity==="Medium"?"15–35%":">35%"}</strong></div></div><p class="cx-formula">Formula: |Source A − Source B| ÷ max(|A|, |B|) × 100 = ${Number(f.percent_difference).toLocaleString(undefined,{maximumFractionDigits:2})}%.</p><div class="cx-review-questions"><strong>Questions to reconcile</strong><ul><li>Do both files use the same metric definition, reporting period, and accounting basis?</li><li>Was one value revised, forecasted, rounded, or copied from an earlier version?</li><li>Can the owner provide a dated source-of-truth figure and explain the gap?</li></ul></div></div></article>`;}).join("");
+}
+async function loadContradictions(projectId){
+ const list=document.getElementById("contradiction-list");list.innerHTML='<div class="empty-state compact"><strong>Comparing source observations…</strong><span>Matching metric, period and currency.</span></div>';
+ try{const data=await Api.analysisContradictions(projectId);cxSummary=data.summary||{};cxFindings=data.findings||[];
+  for(const [id,key] of [["cx-total","finding_count"],["cx-high","high"],["cx-medium","medium"],["cx-low","low"]])document.getElementById(id).textContent=cxSummary[key]??0;
+  document.getElementById("cx-files").textContent=cxSummary.ready_document_count||0;document.getElementById("cx-observations").textContent=cxSummary.total_observations||0;document.getElementById("cx-groups").textContent=cxSummary.comparable_groups||0;document.getElementById("cx-pairs").textContent=cxSummary.compared_pairs||0;
+  document.getElementById("contradiction-method").textContent=cxSummary.comparison_rule||"Only comparable observations are checked. Currency conversion is not performed.";
+  const missing=cxSummary.excluded_missing_period||0;document.getElementById("contradiction-footnote").textContent=`${missing} observation${missing===1?" was":"s were"} excluded because a canonical period was unavailable. Differences below 5% are not flagged. This is discrepancy triage, not a fraud verdict or risk score.`;
+  renderObservationGroups(data.observation_groups||[]);renderContradictions();
+ }catch(err){list.innerHTML=`<div class="empty-state compact"><strong>Could not load comparison</strong><span>${AppUI.escapeHtml(err.message||"Try refreshing the page.")}</span></div>`;}
+}
+document.getElementById("contradiction-severity-filter").addEventListener("change",renderContradictions);document.getElementById("cx-search").addEventListener("input",renderContradictions);document.getElementById("refresh-contradictions").addEventListener("click",()=>cxProjectId&&loadContradictions(cxProjectId));
+window.onProjectReady=id=>{cxProjectId=id;loadContradictions(id);};window.onProjectChanged=id=>{cxProjectId=id;loadContradictions(id);};
+</script>
+{% endblock %}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b827b">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}FoundRisk Edge{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-teal-premium.css') }}?v=20260927-risk-copilot">
+    {% block extra_head %}{% endblock %}
+</head>
+<body data-page="{{ active_page|default('overview') }}">
+<div class="app-shell">
+    <div class="mobile-scrim" id="mobile-scrim"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </div>
+            <div>
+                <div class="brand-name">FoundRisk <span>Edge</span></div>
+                <div class="brand-sub">Private Startup Intelligence</div>
+            </div>
+        </div>
+
+        <div class="nav-section-label">Workspace</div>
+        <nav class="nav-list" aria-label="Primary navigation">
+            <a class="nav-item {{ 'active' if active_page == 'overview' else '' }}" href="{{ url_for('pages.overview') }}">
+                <span class="nav-icon icon-grid"></span><span>Overview</span>
+            </a>
+            <a class="nav-item {{ 'active' if active_page == 'documents' else '' }}" href="{{ url_for('pages.documents_page') }}">
+                <span class="nav-icon icon-doc"></span><span>Documents</span>
+            </a>
+            <a class="nav-item {{ 'active' if active_page == 'analysis' else '' }}" href="{{ url_for('pages.analysis_page') }}">
+                <span class="nav-icon icon-chart"></span><span>Analysis</span>
+            </a>
+            <a class="nav-item {{ 'active' if active_page == 'contradictions' else '' }}" href="{{ url_for('pages.contradictions_page') }}">
+                <span class="nav-icon icon-bolt"></span><span>Contradiction Engine</span>
+            </a>
+            <a class="nav-item {{ 'active' if active_page == 'evidence' else '' }}" href="{{ url_for('pages.evidence_page') }}">
+                <span class="nav-icon icon-search"></span><span>Evidence</span>
+            </a>
+        </nav>
+
+        <div class="nav-section-label nav-section-spaced">Intelligence</div>
+        <div class="nav-list future-nav">
+            <a class="nav-item {{ 'active' if active_page == 'risks' else '' }}" href="{{ url_for('pages.risks_page') }}"><span class="nav-icon icon-bolt"></span><span>Risk Findings</span></a>
+            <a class="nav-item {{ 'active' if active_page == 'copilot' else '' }}" href="{{ url_for('pages.copilot_page') }}"><span class="nav-icon icon-spark"></span><span>Due Diligence Copilot</span></a>
+            <a class="nav-item {{ 'active' if active_page == 'benchmarks' else '' }}" href="{{ url_for('pages.benchmarks_page') }}"><span class="nav-icon icon-chart"></span><span>Benchmarks</span></a>
+            <a class="nav-item {{ 'active' if active_page == 'settings' else '' }}" href="{{ url_for('pages.settings_page') }}"><span class="nav-icon icon-sliders"></span><span>Settings</span></a>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+        <div class="privacy-status">
+            <div class="privacy-dot"></div>
+            <div>
+                <strong>Local analysis</strong>
+                <span>Data stays on this device</span>
+            </div>
+        </div>
+        <div class="phase-label">PHASE 01 <span>DOCUMENT INTELLIGENCE</span></div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu" id="mobile-menu" aria-label="Open navigation"><span></span><span></span><span></span></button>
+                <div class="breadcrumb">
+                    <span>FoundRisk Edge</span><b>/</b><strong>{% block page_title %}Overview{% endblock %}</strong>
+                </div>
+            </div>
+            <div class="topbar-actions"><div class="edge-status"><span></span> LOCAL EDGE MODE</div>
+                <div class="project-control">
+                    <span class="project-caption">PROJECT</span>
+                    <select id="project-select" aria-label="Select project"></select>
+                </div>
+                <button id="new-project-btn" class="btn btn-primary btn-compact"><span class="plus">+</span> New project</button>
+                <div class="account-menu"><span class="account-name">{{ current_user.name if current_user else 'Workspace' }}</span><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="account-logout" type="submit">Sign out</button></form></div>
+            </div>
+        </header>
+
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+<div class="drawer-overlay" id="claim-drawer-overlay">
+    <aside class="drawer" aria-label="Claim details">
+        <button class="drawer-close" id="drawer-close-btn" aria-label="Close claim details">×</button>
+        <div id="drawer-body"></div>
+    </aside>
+</div>
+
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/project-state.js') }}"></script>
+<script src="{{ url_for('static', filename='js/claim-drawer.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    try { const prefs = JSON.parse(localStorage.getItem("foundrisk_display_preferences_v1") || "{}"); document.body.classList.toggle("fr-compact", !!prefs.compact); document.body.classList.toggle("fr-full-excerpts", prefs.excerpts !== false); document.body.classList.toggle("fr-reduce-motion", !!prefs.reduceMotion); } catch (_) {}
+    const select = document.getElementById("project-select");
+    const newBtn = document.getElementById("new-project-btn");
+
+    ProjectState.ensureAndPopulateSelector(select, (id) => {
+        if (window.onProjectChanged) window.onProjectChanged(id);
+    }).then((activeId) => {
+        if (window.onProjectReady) window.onProjectReady(activeId);
+    }).catch((err) => {
+        AppUI.toast(err.message || "Could not load projects.", "error");
+    });
+
+    newBtn.addEventListener("click", async () => {
+        const name = prompt("Name this due-diligence project:");
+        if (!name || !name.trim()) return;
+        try {
+            const { project } = await Api.createProject(name.trim());
+            ProjectState.set(project.id);
+            location.reload();
+        } catch (e) {
+            AppUI.toast(e.message || "Could not create project.", "error");
+        }
+    });
+
+    const menu = document.getElementById("mobile-menu");
+    const sidebar = document.getElementById("sidebar");
+    const scrim = document.getElementById("mobile-scrim");
+    const closeMobile = () => { sidebar.classList.remove("mobile-open"); scrim.classList.remove("open"); };
+    menu.addEventListener("click", () => { sidebar.classList.add("mobile-open"); scrim.classList.add("open"); });
+    scrim.addEventListener("click", closeMobile);
+});
+
+const AppUI = (() => {
+    function toast(message, type = "info") {
+        const region = document.getElementById("toast-region");
+        if (!region) return;
+        const el = document.createElement("div");
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
+        region.appendChild(el);
+        requestAnimationFrame(() => el.classList.add("show"));
+        setTimeout(() => {
+            el.classList.remove("show");
+            setTimeout(() => el.remove(), 180);
+        }, 3400);
+    }
+    function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str == null ? "" : String(str);
+        return div.innerHTML;
+    }
+    function formatNumber(value) {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+        return Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    }
+    return { toast, escapeHtml, formatNumber };
+})();
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

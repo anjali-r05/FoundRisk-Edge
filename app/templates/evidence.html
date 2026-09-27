@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Evidence Explorer — FoundRisk Edge{% endblock %}
+{% block page_title %}Evidence{% endblock %}
+
+{% block content %}
+<section class="page-intro page-intro-evidence">
+    <div>
+        <div class="eyebrow">TRACEABLE SOURCE INTELLIGENCE</div>
+        <h1>Evidence Explorer</h1>
+        <p>Trace every extracted metric to its original text and the document location captured during parsing.</p>
+    </div>
+    <div class="evidence-counter"><strong id="evidence-count">0</strong><span>matching records</span></div>
+</section>
+
+<section class="evidence-stat-grid" aria-label="Evidence summary">
+    <article class="evidence-stat-card"><span class="evidence-stat-icon">▤</span><div><small>VISIBLE RECORDS</small><strong id="evidence-stat-total">0</strong><span>After current filters</span></div></article>
+    <article class="evidence-stat-card"><span class="evidence-stat-icon">✓</span><div><small>HIGH CONFIDENCE</small><strong id="evidence-stat-high">0</strong><span>Rule-based confidence label</span></div></article>
+    <article class="evidence-stat-card"><span class="evidence-stat-icon">◈</span><div><small>METRIC COVERAGE</small><strong id="evidence-stat-metrics">0 / 3</strong><span>Metric families represented</span></div></article>
+    <article class="evidence-stat-card evidence-stat-action"><span class="evidence-stat-icon">⇩</span><div><small>PORTABLE REVIEW</small><strong>Export results</strong><span>Download visible records as CSV</span></div><button id="export-evidence-btn" class="btn btn-secondary btn-small" type="button">Export CSV</button></article>
+</section>
+
+<section class="panel explorer-panel evidence-workspace">
+    <div class="explorer-toolbar">
+        <div class="search-box"><span class="icon-search" aria-hidden="true"></span><input type="search" id="search-input" placeholder="Search claim text, source file, metric or location…" aria-label="Search evidence"><button type="button" id="clear-search-btn" class="search-clear" aria-label="Clear search" title="Clear search">×</button></div>
+        <div class="filter-row">
+            <select id="metric-filter" aria-label="Filter by metric"><option value="">All metrics</option><option value="revenue">Revenue</option><option value="customer_count">Customer Count</option><option value="market_size">Market Size</option></select>
+            <select id="confidence-filter" aria-label="Filter by confidence"><option value="">All confidence</option><option value="High">High confidence</option><option value="Medium">Medium confidence</option><option value="Low">Low confidence</option></select>
+            <select id="document-filter" aria-label="Filter by source document"><option value="">All documents</option></select>
+            <button type="button" id="reset-filters-btn" class="btn btn-secondary btn-small">Reset</button>
+        </div>
+    </div>
+    <div class="explorer-body evidence-explorer-body">
+        <div class="evidence-results">
+            <div class="results-head"><span id="results-caption">All evidence</span><span class="results-hint">Select a record to inspect its source</span></div>
+            <div id="evidence-list" aria-live="polite"><div class="empty-state large"><strong>Loading evidence…</strong></div></div>
+        </div>
+        <aside class="explorer-aside">
+            <div class="aside-card evidence-principle-card">
+                <div class="eyebrow">EVIDENCE PRINCIPLE</div>
+                <h3>Every claim should lead back to its source.</h3>
+                <p>Source locations are shown only when captured during parsing. Missing page, sheet, cell or row details are marked as unavailable—not guessed.</p>
+                <a href="{{ url_for('pages.documents_page') }}">Manage source files →</a>
+            </div>
+            <div class="aside-card mini"><span class="aside-icon">✓</span><div><strong>Phase 1</strong><span>Deterministic extraction</span></div></div>
+            <div class="aside-card evidence-help-card"><strong>How to review</strong><ol><li>Search or filter the records.</li><li>Open a record to inspect the original excerpt.</li><li>Check the source file and captured location.</li></ol></div>
+        </aside>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentProjectId = null;
+let searchTimer = null;
+let visibleEvidence = [];
+function metricLabel(type) { return {revenue:"Revenue",customer_count:"Customer Count",market_size:"Market Size"}[type] || type || "Unclassified"; }
+function badgeClass(label) { return {High:"badge-high",Medium:"badge-medium",Low:"badge-low"}[label] || "badge-neutral"; }
+function originalValueDisplay(e) {
+    if (e.original_value == null || e.original_value === "") return "—";
+    const prefix = e.currency === "INR" ? "₹" : e.currency === "USD" ? "$" : "";
+    const unit = e.original_unit ? ` ${e.original_unit}` : "";
+    return `${prefix}${String(e.original_value)}${unit}`;
+}
+function normalizedValueDisplay(e) {
+    if (e.value == null) return "—";
+    const prefix = e.currency === "INR" ? "₹" : e.currency === "USD" ? "$" : "";
+    return `${prefix}${Number(e.value).toLocaleString("en-IN",{maximumFractionDigits:2})}`;
+}
+function sourceLabel(e) {
+    const s = e.source || {};
+    if (s.page != null) return `Page ${s.page}`;
+    if (s.sheet) {
+        const parts = [`Sheet ${s.sheet}`];
+        if (s.cell) parts.push(`Cell ${s.cell}`);
+        return parts.join(" · ");
+    }
+    if (s.row != null) {
+        const parts = [`Row ${s.row}`];
+        if (s.column) parts.push(`Column ${s.column}`);
+        return parts.join(" · ");
+    }
+    return "Source location unavailable";
+}
+function safe(value) { return AppUI.escapeHtml(value == null ? "" : String(value)); }
+async function loadDocumentsForFilter() {
+    const select = document.getElementById("document-filter");
+    const previous = select.value;
+    try {
+        const {documents} = await Api.listDocuments(currentProjectId);
+        select.innerHTML = '<option value="">All documents</option>' + documents.map(d => `<option value="${Number(d.id)}">${safe(d.filename)}</option>`).join("");
+        if (documents.some(d => String(d.id) === previous)) select.value = previous;
+    } catch (e) {
+        select.innerHTML = '<option value="">All documents</option>';
+        AppUI.toast(e.message || "Could not load source documents.", "error");
+    }
+}
+function renderEvidence(evidence) {
+    const list = document.getElementById("evidence-list");
+    if (!evidence.length) {
+        list.innerHTML = `<div class="empty-state large evidence-empty"><div class="empty-icon icon-search"></div><strong>No matching evidence</strong><span>Try a different search or reset the filters. If no records exist, upload and process a supported source document first.</span><button type="button" class="btn btn-secondary btn-small" id="empty-reset-btn">Reset filters</button></div>`;
+        document.getElementById("empty-reset-btn").addEventListener("click", resetFilters);
+        return;
+    }
+    list.innerHTML = evidence.map(e => `
+        <button class="evidence-row evidence-record" data-id="${Number(e.id)}" type="button" aria-label="Open ${safe(metricLabel(e.metric_type))} evidence">
+            <div class="evidence-row-top">
+                <div class="evidence-metric"><span class="metric-mark mark-${safe(e.metric_type)}">${e.metric_type==="revenue"?"₹":e.metric_type==="customer_count"?"#":"M"}</span><div><strong>${safe(metricLabel(e.metric_type))}</strong><span>${safe(e.period || "Period not confirmed")}</span></div></div>
+                <span class="badge ${badgeClass(e.confidence_label)}">${safe(e.confidence_label || "Unrated")}</span>
+            </div>
+            <div class="evidence-value-row"><strong>${safe(originalValueDisplay(e))}</strong><span>${safe(e.evidence_text || "No excerpt captured")}</span></div>
+            <div class="evidence-normalized-line">Normalized value: <strong>${safe(normalizedValueDisplay(e))}</strong></div>
+            <div class="evidence-source-line"><span class="source-pin icon-pin" aria-hidden="true"></span><strong>${safe(e.document_filename || "Source document unavailable")}</strong></div>
+            <div class="evidence-row-footer"><span class="evidence-location">${safe(sourceLabel(e))}</span><span class="open-arrow">View details&nbsp; ↗</span></div>
+        </button>`).join("");
+    list.querySelectorAll(".evidence-row").forEach(row => row.addEventListener("click", () => ClaimDrawer.open(row.dataset.id)));
+}
+async function loadEvidence() {
+    if (!currentProjectId) return;
+    const params = {};
+    const metric = document.getElementById("metric-filter").value;
+    const confidence = document.getElementById("confidence-filter").value;
+    const q = document.getElementById("search-input").value.trim();
+    if (metric) params.metric_type = metric;
+    if (confidence) params.confidence = confidence;
+    if (q) params.q = q;
+    const list = document.getElementById("evidence-list");
+    list.setAttribute("aria-busy", "true");
+    try {
+        let {evidence} = await Api.listEvidence(currentProjectId, params);
+        const docId = document.getElementById("document-filter").value;
+        if (docId) evidence = evidence.filter(e => String(e.document_id) === docId);
+        visibleEvidence = evidence;
+        document.getElementById("evidence-count").textContent = evidence.length;
+        document.getElementById("evidence-stat-total").textContent = evidence.length;
+        document.getElementById("evidence-stat-high").textContent = evidence.filter(e => e.confidence_label === "High").length;
+        document.getElementById("evidence-stat-metrics").textContent = `${new Set(evidence.map(e => e.metric_type).filter(Boolean)).size} / 3`;
+        document.getElementById("results-caption").textContent = `${evidence.length} matching record${evidence.length===1?"":"s"}`;
+        renderEvidence(evidence);
+    } catch(e) {
+        list.innerHTML = `<div class="empty-state large"><strong>Could not load evidence</strong><span>${safe(e.message || "Please try again.")}</span><button type="button" class="btn btn-secondary btn-small" id="retry-evidence-btn">Try again</button></div>`;
+        document.getElementById("retry-evidence-btn").addEventListener("click", loadEvidence);
+        AppUI.toast(e.message || "Could not load evidence.", "error");
+    } finally { list.removeAttribute("aria-busy"); }
+}
+function resetFilters() {
+    document.getElementById("search-input").value = "";
+    document.getElementById("metric-filter").value = "";
+    document.getElementById("confidence-filter").value = "";
+    document.getElementById("document-filter").value = "";
+    loadEvidence();
+}
+function exportVisibleEvidence() {
+    if (!visibleEvidence.length) { AppUI.toast("There are no visible evidence records to export.", "error"); return; }
+    const headers = ["Metric", "Original value", "Original unit", "Normalized value", "Currency", "Period", "Confidence", "Source document", "Source location", "Provenance confidence", "Evidence text"];
+    const rows = visibleEvidence.map(e => [metricLabel(e.metric_type), e.original_value ?? "", e.original_unit || "", e.value ?? "", e.currency || "", e.period || "", e.confidence_label || "", e.document_filename || "", e.source_location || "", e.source?.provenance_confidence || "", e.evidence_text || ""]);
+    const csvCell = value => {
+        let text = String(value ?? "");
+        const trimmed = text.trimStart();
+        const numericNegative = /^-\d+(?:\.\d+)?$/.test(trimmed);
+        if (/^[=+@\-\t\r]/.test(trimmed) && !numericNegative) text = "'" + text;
+        return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "foundrisk-evidence-export.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    AppUI.toast(`Exported ${visibleEvidence.length} evidence record${visibleEvidence.length===1?"":"s"}.`, "success");
+}
+function setupEvidence() {
+    ["metric-filter","confidence-filter","document-filter"].forEach(id => document.getElementById(id).addEventListener("change", loadEvidence));
+    document.getElementById("export-evidence-btn").addEventListener("click", exportVisibleEvidence);
+    document.getElementById("reset-filters-btn").addEventListener("click", resetFilters);
+    document.getElementById("clear-search-btn").addEventListener("click", () => { document.getElementById("search-input").value=""; loadEvidence(); });
+    document.getElementById("search-input").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadEvidence, 250); });
+}
+window.onProjectReady = async id => { currentProjectId=id; setupEvidence(); await loadDocumentsForFilter(); loadEvidence(); };
+window.onProjectChanged = async id => {
+    currentProjectId = id;
+    document.getElementById("search-input").value = "";
+    document.getElementById("metric-filter").value = "";
+    document.getElementById("confidence-filter").value = "";
+    await loadDocumentsForFilter();
+    document.getElementById("document-filter").value = "";
+    await loadEvidence();
+};
+</script>
+{% endblock %}

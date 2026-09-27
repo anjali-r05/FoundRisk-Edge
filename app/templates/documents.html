@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Documents — FoundRisk Edge{% endblock %}
+{% block page_title %}Documents{% endblock %}
+
+{% block content %}
+<section class="page-intro page-intro-documents">
+    <div>
+        <div class="eyebrow">SOURCE WORKSPACE</div>
+        <h1>Documents</h1>
+        <p>Bring the startup's source material into one local, traceable evidence base.</p>
+    </div>
+    <div class="intro-note"><span class="privacy-mini-dot"></span> Local processing · max 20 MB</div>
+</section>
+
+<section class="upload-card" id="dropzone">
+    <div class="upload-orbit"><div class="upload-icon icon-upload"></div></div>
+    <div class="upload-copy">
+        <div class="upload-kicker">SOURCE → EVIDENCE</div>
+        <h2>Bring the real source material in.</h2>
+        <p>Drop a financial model, pitch deck or market file. FoundRisk reads the uploaded file locally and builds evidence from what is actually present.</p>
+        <p>or <button type="button" id="browse-btn" class="inline-button">browse your files</button></p>
+        <div class="file-types"><span>PDF</span><span>CSV</span><span>XLSX</span><b>Text-based PDF only · max 20 MB</b></div>
+    </div>
+    <input type="file" id="file-input" accept=".pdf,.csv,.xlsx" multiple hidden>
+</section>
+<div id="upload-status" class="upload-status" role="status"></div>
+
+<section class="upload-help">
+    <article class="help-card"><b><i>01</i> Read</b><p>PyMuPDF reads text-based PDFs. pandas/openpyxl read CSV and XLSX files without sending them to a cloud service.</p></article>
+    <article class="help-card"><b><i>02</i> Extract</b><p>FoundRisk identifies only Revenue, Customer Count and Market Size using deterministic metric keywords and numeric context.</p></article>
+    <article class="help-card"><b><i>03</i> Prove</b><p>Every observation keeps its source page, sheet/cell or row, plus the exact extraction signals used.</p></article>
+</section>
+
+<section class="doc-insight-grid" aria-label="Document workspace summary">
+    <article class="doc-insight-card"><span class="doc-insight-icon">▤</span><div><small>INGESTION WORKSPACE</small><strong id="doc-total-stat">0</strong><span>Total source files</span></div></article>
+    <article class="doc-insight-card"><span class="doc-insight-icon">✓</span><div><small>PROCESSING HEALTH</small><strong id="doc-ready-stat">0</strong><span>Successfully processed</span></div></article>
+    <article class="doc-insight-card"><span class="doc-insight-icon">⌁</span><div><small>STRUCTURED OUTPUT</small><strong id="doc-evidence-stat">0</strong><span>Evidence records created</span></div></article>
+    <article class="doc-insight-card doc-insight-highlight"><span class="doc-insight-icon">↗</span><div><small>TRACEABILITY</small><strong>Source-linked</strong><span>Every record retains its location</span></div></article>
+</section>
+
+<section class="panel documents-panel">
+    <div class="panel-head">
+        <div><div class="eyebrow">SOURCE LIBRARY</div><h2>Documents in this project</h2></div>
+        <div class="document-library-actions">
+            <label class="doc-search"><span>⌕</span><input id="document-search" type="search" placeholder="Search documents…" aria-label="Search documents"></label>
+            <select id="document-status-filter" class="doc-status-filter" aria-label="Filter by processing status"><option value="">All statuses</option><option value="ready">Processed</option><option value="uploaded">Queued</option><option value="failed">Failed</option><option value="empty">No text found</option></select>
+            <span class="count-label" id="document-count">0 files</span>
+        </div>
+    </div>
+    <div class="document-table-head">
+        <span>Document</span><span>Type</span><span>Status</span><span>Claims</span><span>Evidence</span><span></span>
+    </div>
+    <div id="documents-list" class="document-list"></div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentProjectId = null;
+let uploadBound = false;
+
+function statusClass(status) {
+    return status === "ready" ? "status-ready" : (status === "failed" || status === "empty" ? "status-danger" : "status-progress");
+}
+function statusText(status) {
+    return {ready:"Processed",uploaded:"Queued",parsing:"Parsing",extracting:"Extracting",normalizing:"Normalizing",indexing:"Indexing",empty:"No text found",failed:"Failed"}[status] || status;
+}
+function fileTypeLabel(type) { return type === "pdf" ? "PDF" : type === "xlsx" ? "XLSX" : "CSV"; }
+
+let cachedDocuments = [];
+function renderDocuments() {
+    const query = document.getElementById("document-search").value.trim().toLowerCase();
+    const status = document.getElementById("document-status-filter").value;
+    const documents = cachedDocuments.filter(d => (!status || d.status === status) && (!query || d.filename.toLowerCase().includes(query) || String(d.file_type).toLowerCase().includes(query)));
+    document.getElementById("document-count").textContent = `${documents.length} of ${cachedDocuments.length} file${cachedDocuments.length === 1 ? "" : "s"}`;
+    const list = document.getElementById("documents-list");
+    if (!cachedDocuments.length) {
+        list.innerHTML = `<div class="empty-state large"><div class="empty-icon icon-doc"></div><strong>Your source library is empty</strong><span>Upload the first document above. Processing starts automatically.</span></div>`;
+        return;
+    }
+    if (!documents.length) {
+        list.innerHTML = `<div class="empty-state compact"><strong>No documents match</strong><span>Try a different search term or status filter.</span></div>`;
+        return;
+    }
+    list.innerHTML = documents.map(d => `
+        <div class="document-row">
+            <div class="document-name">
+                <div class="file-icon file-${d.file_type}">${fileTypeLabel(d.file_type)}</div>
+                <div><strong>${AppUI.escapeHtml(d.filename)}</strong><span>${d.page_count != null ? (d.file_type === "pdf" ? d.page_count + " pages" : d.file_type === "xlsx" ? d.page_count + " sheets" : d.page_count + " rows") : "Awaiting processing"}</span></div>
+            </div>
+            <div class="table-type">${fileTypeLabel(d.file_type)}</div>
+            <div><span class="status-pill ${statusClass(d.status)}">${statusText(d.status)}</span>${d.status_detail ? `<div class="row-note">${AppUI.escapeHtml(d.status_detail)}</div>` : ""}</div>
+            <div class="table-number">${d.claims_found || 0}</div>
+            <div class="table-number">${d.evidence_count || 0}</div>
+            <div class="row-action">${d.status === "uploaded" ? `<button class="btn btn-small btn-primary process-btn" data-id="${d.id}">Process</button>` : d.status === "ready" ? `<a href="/evidence" class="row-link">View →</a>` : ""}</div>
+        </div>
+    `).join("");
+
+    list.querySelectorAll(".process-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            btn.disabled = true; btn.textContent = "Processing…";
+            try { await Api.processDocument(btn.dataset.id); AppUI.toast("Document processed successfully.", "success"); }
+            catch(e) { AppUI.toast(e.message || "Processing failed.", "error"); }
+            refreshDocuments();
+        });
+    });
+}
+async function refreshDocuments() {
+    const { documents } = await Api.listDocuments(currentProjectId);
+    cachedDocuments = documents || [];
+    document.getElementById("doc-total-stat").textContent = cachedDocuments.length;
+    document.getElementById("doc-ready-stat").textContent = cachedDocuments.filter(d => d.status === "ready").length;
+    document.getElementById("doc-evidence-stat").textContent = cachedDocuments.reduce((sum, d) => sum + (d.evidence_count || 0), 0);
+    renderDocuments();
+}
+
+async function processUploaded(file) {
+    try {
+        const result = await Api.uploadDocument(currentProjectId, file);
+        await Api.processDocument(result.document.id);
+        return true;
+    } catch (e) {
+        AppUI.toast(`${file.name}: ${e.message || "Upload failed."}`, "error");
+        return false;
+    }
+}
+function setupUpload() {
+    if (uploadBound) return;
+    uploadBound = true;
+    document.getElementById("document-search").addEventListener("input", renderDocuments);
+    document.getElementById("document-status-filter").addEventListener("change", renderDocuments);
+    const drop = document.getElementById("dropzone"), input = document.getElementById("file-input");
+    const browse = document.getElementById("browse-btn"), status = document.getElementById("upload-status");
+    browse.addEventListener("click", e => { e.stopPropagation(); input.click(); });
+    drop.addEventListener("click", () => input.click());
+    drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("drag-over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
+    drop.addEventListener("drop", async e => {
+        e.preventDefault(); drop.classList.remove("drag-over");
+        if (e.dataTransfer.files.length) await handleFiles([...e.dataTransfer.files]);
+    });
+    input.addEventListener("change", async () => {
+        if (input.files.length) await handleFiles([...input.files]);
+        input.value = "";
+    });
+    async function handleFiles(files) {
+        const supported = files.filter(f => /\.(pdf|csv|xlsx)$/i.test(f.name));
+        if (!supported.length) { AppUI.toast("Please select a PDF, CSV or XLSX file.", "error"); return; }
+        status.innerHTML = `<span class="spinner"></span> Processing ${supported.length} document${supported.length === 1 ? "" : "s"} locally…`;
+        drop.classList.add("uploading");
+        let success = 0;
+        for (const file of supported) if (await processUploaded(file)) success++;
+        drop.classList.remove("uploading");
+        status.innerHTML = `<span class="success-check">✓</span> ${success} document${success === 1 ? "" : "s"} processed.`;
+        await refreshDocuments();
+    }
+}
+window.onProjectReady = id => { currentProjectId = id; setupUpload(); refreshDocuments(); };
+window.onProjectChanged = id => { currentProjectId = id; refreshDocuments(); };
+</script>
+{% endblock %}

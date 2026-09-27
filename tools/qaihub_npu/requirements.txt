@@ -1,0 +1,2 @@
+qai-hub[torch]>=0.35.0
+numpy>=1.26

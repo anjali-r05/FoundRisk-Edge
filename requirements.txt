@@ -1,0 +1,8 @@
+Flask>=3.1,<4
+Flask-SQLAlchemy>=3.1,<4
+PyMuPDF>=1.26,<2
+pandas>=2.3,<3
+openpyxl>=3.1,<4
+pytest>=8,<9
+pytesseract>=0.3.13,<1
+Pillow>=10,<13

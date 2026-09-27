@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Analysis — FoundRisk Edge{% endblock %}
+{% block page_title %}Analysis{% endblock %}
+{% block content %}
+<section class="page-intro page-intro-analysis">
+  <div><div class="eyebrow">ANALYSIS LAB · LIVE SOURCE DATA</div><h1>Turn source files into<br><span style="color:var(--teal)">structured evidence.</span></h1><p>Feature 1 does more than upload files: it reads supported documents, extracts three defined metric families, normalizes values, records periods and keeps every observation tied to its exact source.</p></div>
+  <div class="analysis-badge"><span class="privacy-mini-dot"></span> Local · deterministic · live</div>
+</section>
+<section class="analysis-grid" id="analysis-metrics">
+  <article class="analysis-stat"><span class="analysis-stat-icon">₹</span><div><small>Revenue</small><strong id="a-revenue">—</strong><span id="a-revenue-meta">No evidence yet</span></div></article>
+  <article class="analysis-stat"><span class="analysis-stat-icon">#</span><div><small>Customer count</small><strong id="a-customers">—</strong><span id="a-customers-meta">No evidence yet</span></div></article>
+  <article class="analysis-stat"><span class="analysis-stat-icon">M</span><div><small>Market size</small><strong id="a-market">—</strong><span id="a-market-meta">No evidence yet</span></div></article>
+</section>
+<section class="analysis-insight-strip" id="analysis-insight-strip">
+  <div class="analysis-insight-mark">✦</div>
+  <div><small>LIVE ANALYSIS BRIEF</small><strong id="analysis-insight-title">Waiting for source evidence</strong><p id="analysis-insight-copy">Upload a supported document to generate a data-backed summary of metric coverage and evidence quality.</p></div>
+  <a href="{{ url_for('pages.evidence_page') }}" class="analysis-insight-link">Explore evidence <span>↗</span></a>
+</section>
+<section class="panel observation-ledger-panel" id="observation-ledger-panel">
+  <div class="panel-head"><div><div class="eyebrow">LIVE OBSERVATION LEDGER</div><h2>Actual values found in your files</h2><p class="panel-copy">Every row below comes from a processed source document. Values are shown with their reporting period and provenance; a single source can still provide useful period-wise data.</p></div><a class="panel-link" href="{{ url_for('pages.evidence_page') }}">Open evidence →</a></div>
+  <div class="observation-ledger-meta" id="observation-ledger-meta">Waiting for extracted observations…</div>
+  <div class="observation-ledger" id="observation-ledger"><div class="empty-state compact"><strong>No observations yet</strong><span>Upload and process a supported document to populate this ledger.</span></div></div>
+</section>
+<section class="section-grid two-thirds">
+ <article class="panel"><div class="panel-head"><div><div class="eyebrow">COVERAGE MAP</div><h2>What was actually found</h2></div><a class="panel-link" href="{{ url_for('pages.evidence_page') }}">Inspect evidence →</a></div><p class="panel-copy analysis-panel-copy">Observation volume across the three supported metric families. Coverage is descriptive—not a risk score.</p><div id="coverage-body" class="coverage-analysis"></div></article>
+ <article class="panel"><div class="panel-head"><div><div class="eyebrow">QUALITY SIGNALS</div><h2>Extraction confidence</h2></div></div><div class="donut-wrap"><div class="donut" id="confidence-donut"><div><strong id="confidence-total">0</strong><span>records</span></div></div><div class="donut-legend" id="confidence-legend"></div></div><p class="quality-note">Confidence is transparent and rule-based: keyword + number + unit/currency + period. It is not an AI-generated probability.</p></article>
+</section>
+<section class="section-grid two-thirds">
+ <article class="panel"><div class="panel-head"><div><div class="eyebrow">SOURCE MIX</div><h2>Where evidence came from</h2></div></div><p class="panel-copy analysis-panel-copy">Counts show evidence records grouped by the file type of their source document.</p><div id="source-mix" class="source-mix"></div></article>
+ <article class="panel"><div class="panel-head"><div><div class="eyebrow">TIME COVERAGE</div><h2>Detected periods</h2></div></div><div id="period-list" class="period-list"></div></article>
+</section>
+<section class="panel readiness-panel"><div class="panel-head"><div><div class="eyebrow">FEATURE 1 OUTPUT</div><h2>From upload to usable evidence</h2></div><span class="phase-chip">WORKING NOW</span></div><div class="readiness-grid" id="readiness-body"></div></section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const METRIC_LABELS={revenue:"Revenue",customer_count:"Customer Count",market_size:"Market Size"};
+function fmtEvidence(c){if(!c.latest)return {value:"—",meta:"No evidence found"};const p=c.latest.currency==="INR"?"₹":c.latest.currency==="USD"?"$":"";return {value:p+Number(c.latest.value).toLocaleString("en-IN",{maximumFractionDigits:2}),meta:`${c.observations} observation${c.observations===1?"":"s"} · ${c.latest.period||"period not confirmed"}`}}
+async function loadAnalysis(projectId){try{const [summary,evidenceData,docsData]=await Promise.all([Api.analysisSummary(projectId),Api.listEvidence(projectId),Api.listDocuments(projectId)]);const cov=summary.metric_coverage;for(const [id,type] of [["a-revenue","revenue"],["a-customers","customer_count"],["a-market","market_size"]]){const x=fmtEvidence(cov[type]);document.getElementById(id).textContent=x.value;document.getElementById(id+"-meta").textContent=x.meta}
+const max=Math.max(1,...Object.values(cov).map(x=>x.observations));
+const totalObs=Object.values(cov).reduce((sum,x)=>sum+x.observations,0);
+const covered=Object.values(cov).filter(x=>x.observations>0).length;
+const highTotal=Object.values(cov).reduce((sum,x)=>sum+x.high_confidence_observations,0);
+const lead=Object.entries(cov).sort((a,b)=>b[1].observations-a[1].observations)[0];
+const insightTitle=totalObs?`${covered} of 3 metric families have evidence`:`No structured metric evidence yet`;
+const insightCopy=totalObs?`${totalObs} observations across ${docsData.documents.length} source file${docsData.documents.length===1?"":"s"}. ${highTotal} observation${highTotal===1?" is":"s are"} marked high confidence by the rule-based extractor${lead&&lead[1].observations?`; ${METRIC_LABELS[lead[0]]} has the most observations (${lead[1].observations}).`:"."}`:"Upload a PDF, CSV, or XLSX source to populate metric coverage, source mix, periods, and evidence confidence.";
+document.getElementById("analysis-insight-title").textContent=insightTitle;
+document.getElementById("analysis-insight-copy").textContent=insightCopy;
+document.getElementById("coverage-body").innerHTML=Object.entries(cov).map(([type,c])=>`<div class="coverage-metric-row"><div class="analysis-coverage-title"><strong>${METRIC_LABELS[type]}</strong><span>${c.observations} observation${c.observations===1?"":"s"}</span></div><div class="coverage-track tall"><span style="width:${c.observations?Math.max(5,c.observations/max*100):0}%"></span></div><div class="analysis-coverage-meta">${c.documents} source document${c.documents===1?"":"s"} · ${c.high_confidence_observations} high-confidence</div></div>`).join("");
+const evidence=evidenceData.evidence||[],counts={High:0,Medium:0,Low:0};
+const ledger=document.getElementById("observation-ledger");
+if(!evidence.length){ledger.innerHTML='<div class="empty-state compact"><strong>No observations yet</strong><span>Upload and process a supported document to populate this ledger.</span></div>';document.getElementById("observation-ledger-meta").textContent="No extracted observations";}else{
+ document.getElementById("observation-ledger-meta").textContent=`${evidence.length} extracted observations · actual values from processed source files`;
+ ledger.innerHTML=evidence.slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||""))).map(e=>{const prefix=e.currency==="INR"?"₹":e.currency==="USD"?"$":"";const value=e.value==null?"—":prefix+Number(e.value).toLocaleString("en-IN",{maximumFractionDigits:2});return `<article class="observation-group"><div class="observation-group-head"><div><strong>${AppUI.escapeHtml(METRIC_LABELS[e.metric_type]||e.metric_type||"Metric")}</strong><span>${AppUI.escapeHtml(e.period||"Period not confirmed")}</span></div><span class="observation-status">${AppUI.escapeHtml(e.confidence_label||"Unrated")}</span></div><div class="observation-values"><div class="observation-value"><div class="observation-value-top"><strong>${value}</strong><span>Source value</span></div><span class="observation-source-name">${AppUI.escapeHtml(e.document_name||"Source document")}</span><small>${AppUI.escapeHtml(e.source_location||"Source location unavailable")}</small><p>${AppUI.escapeHtml(e.evidence_text||"")}</p></div></div></article>`;}).join("");}
+evidence.forEach(e=>counts[e.confidence_label]=(counts[e.confidence_label]||0)+1);document.getElementById("confidence-total").textContent=evidence.length;const total=Math.max(1,evidence.length),dh=counts.High/total*360,dm=(counts.High+counts.Medium)/total*360;document.getElementById("confidence-donut").style.setProperty("--donut-high",dh+"deg");document.getElementById("confidence-donut").style.setProperty("--donut-medium",dm+"deg");document.getElementById("confidence-legend").innerHTML=["High","Medium","Low"].map(x=>`<div><i class="quality-dot q-${x.toLowerCase()}"></i><span>${x}</span><strong>${counts[x]}</strong></div>`).join("");
+const formats={PDF:0,CSV:0,XLSX:0};evidence.forEach(e=>{const d=docsData.documents.find(d=>d.id===e.document_id);if(d)formats[d.file_type.toUpperCase()]++});const mf=Math.max(1,...Object.values(formats));document.getElementById("source-mix").innerHTML=Object.entries(formats).map(([t,n])=>`<div class="source-row"><div class="source-label"><span class="format-chip">${t}</span><strong>${n}</strong></div><div class="coverage-track"><span style="width:${n/mf*100}%"></span></div></div>`).join("");
+const periods={};evidence.forEach(e=>{if(e.period)periods[e.period]=(periods[e.period]||0)+1});const entries=Object.entries(periods).sort((a,b)=>b[1]-a[1]);document.getElementById("period-list").innerHTML=entries.length?entries.slice(0,8).map(([p,n])=>`<div class="period-row"><span>${AppUI.escapeHtml(p)}</span><strong>${n}</strong></div>`).join(""): '<div class="empty-state compact"><strong>No periods detected</strong><span>Upload a source containing FY or quarter markers.</span></div>';
+const r=summary.readiness;document.getElementById("readiness-body").innerHTML=`<div class="readiness-card"><span class="ready-icon">01</span><div><strong>Read</strong><span>${r.document_intelligence?"Document parsed locally":"Waiting for source"}</span></div></div><div class="readiness-card"><span class="ready-icon">02</span><div><strong>Extract</strong><span>${r.metric_extraction?"Three metric families active":"No metric evidence yet"}</span></div></div><div class="readiness-card"><span class="ready-icon">03</span><div><strong>Normalize</strong><span>${r.metric_extraction?"Units and periods structured":"Waiting for claims"}</span></div></div><div class="readiness-card"><span class="ready-icon">04</span><div><strong>Prove</strong><span>${r.evidence_provenance?"Source provenance captured":"Waiting for evidence"}</span></div></div>`;
+}catch(e){AppUI.toast(e.message||"Could not load analysis.","error")}}
+window.onProjectReady=loadAnalysis;window.onProjectChanged=loadAnalysis;
+</script>
+{% endblock %}
